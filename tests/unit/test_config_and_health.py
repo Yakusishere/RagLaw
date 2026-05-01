@@ -8,21 +8,27 @@ from app.main import create_app
 def test_settings_reads_environment(monkeypatch):
     monkeypatch.setenv("DATABASE_URL", "postgresql://law:pass@localhost:5432/law_helper")
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setenv("OPENAI_MODEL", "qwen3.5-flash-2026-02-23")
+    monkeypatch.setenv("OPENAI_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1")
     settings = Settings()
     assert settings.database_url == "postgresql://law:pass@localhost:5432/law_helper"
     assert settings.openai_api_key == "test-key"
+    assert settings.openai_chat_model == "qwen3.5-flash-2026-02-23"
+    assert settings.openai_base_url == "https://dashscope.aliyuncs.com/compatible-mode/v1"
     assert settings.retrieval_final_top_k == 8
 
 
 def test_get_app_settings_uses_cached_settings(monkeypatch):
     monkeypatch.setenv("DATABASE_URL", "postgresql://law:pass@localhost:5432/law_helper")
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setenv("OPENAI_MODEL", "qwen3.5-flash-2026-02-23")
     get_settings.cache_clear()
 
     settings = get_app_settings()
 
     assert settings.database_url == "postgresql://law:pass@localhost:5432/law_helper"
     assert settings.openai_api_key == "test-key"
+    assert settings.openai_chat_model == "qwen3.5-flash-2026-02-23"
     get_settings.cache_clear()
 
 

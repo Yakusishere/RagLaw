@@ -4,7 +4,8 @@
 
 1. Copy `.env.example` to `.env.local`
 2. Fill in `DATABASE_URL` and `OPENAI_API_KEY`
-3. Install dependencies with `python -m pip install -e ".[dev]"`
+3. If using an OpenAI-compatible provider such as DashScope, also set `OPENAI_BASE_URL`
+4. Install dependencies with `python -m pip install -e ".[dev]"`
 
 ## Start the API
 
@@ -17,6 +18,7 @@ uvicorn app.main:app --reload
 - promoted corpus exists in `rag.chunks`
 - promoted real embeddings exist in `rag.chunk_embeddings`
 - `OPENAI_EMBEDDING_MODEL` matches the promoted embedding model name
+- if `OPENAI_BASE_URL` points to a non-OpenAI provider, that provider must also support the configured embedding model
 
 ## Real embedding cutover
 
@@ -27,7 +29,7 @@ $env:OPENAI_API_KEY="your_api_key"
 python .\scripts\build_openai_embeddings.py `
   --chunks .\build\ingestion\chunks.jsonl `
   --output .\build\embeddings\openai_embeddings.jsonl `
-  --model text-embedding-3-small `
+  --model text-embedding-v4 `
   --enabled-only
 ```
 
@@ -39,8 +41,8 @@ python .\scripts\load_embeddings_to_pg.py `
   --db-user law `
   --db-name law_helper `
   --embeddings .\build\embeddings\openai_embeddings.jsonl `
-  --run-label "openai-small" `
-  --model-name "text-embedding-3-small" `
+  --run-label "dashscope-embedding-v4" `
+  --model-name "text-embedding-v4" `
   --distance-metric cosine `
   --chunk-scope enabled_only `
   --promote-if-clean

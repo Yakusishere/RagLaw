@@ -21,8 +21,8 @@ def get_db_connection() -> Iterator[Connection]:
 
 
 class OpenAIEmbeddingClient:
-    def __init__(self, api_key: str, model_name: str):
-        self._client = OpenAI(api_key=api_key)
+    def __init__(self, api_key: str, model_name: str, base_url: str | None = None):
+        self._client = OpenAI(api_key=api_key, base_url=base_url)
         self._model_name = model_name
 
     def embed_query(self, query: str) -> list[float]:
@@ -38,6 +38,7 @@ def get_retrieval_service(
     embedding_client = OpenAIEmbeddingClient(
         settings.openai_api_key,
         settings.openai_embedding_model,
+        settings.openai_base_url,
     )
     return RetrievalService(repository, embedding_client, settings)
 
@@ -45,4 +46,8 @@ def get_retrieval_service(
 def get_chat_service(
     settings: Settings = Depends(get_app_settings),
 ) -> LLMService:
-    return LLMService(settings.openai_api_key, settings.openai_chat_model)
+    return LLMService(
+        settings.openai_api_key,
+        settings.openai_chat_model,
+        settings.openai_base_url,
+    )

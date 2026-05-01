@@ -25,8 +25,8 @@ def merge_ranked_candidates(
     for candidate in merged.values():
         doc_bonus = 0.05 if candidate.doc_type == "law" else 0.0
         candidate.hybrid_score = (
-            (candidate.vector_score or 0.0) * 0.7
-            + (candidate.keyword_score or 0.0) * 0.3
+            (candidate.vector_score or 0.0) * 0.85
+            + (candidate.keyword_score or 0.0) * 0.15
             + doc_bonus
         )
 

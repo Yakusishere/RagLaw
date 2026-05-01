@@ -15,8 +15,8 @@ def build_grounded_prompt(retrieval_response: RetrievalResponse) -> str:
 
 
 class LLMService:
-    def __init__(self, api_key: str, model_name: str):
-        self._client = OpenAI(api_key=api_key)
+    def __init__(self, api_key: str, model_name: str, base_url: str | None = None):
+        self._client = OpenAI(api_key=api_key, base_url=base_url)
         self._model_name = model_name
         self._system_prompt = Path("app/prompts/qa_system.txt").read_text(encoding="utf-8")
 

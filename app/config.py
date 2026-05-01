@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -12,7 +13,11 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql://law:change-me@localhost:5432/law_helper"
     openai_api_key: str = ""
-    openai_chat_model: str = "gpt-4.1-mini"
+    openai_base_url: str | None = None
+    openai_chat_model: str = Field(
+        default="gpt-4.1-mini",
+        validation_alias=AliasChoices("OPENAI_CHAT_MODEL", "OPENAI_MODEL"),
+    )
     openai_embedding_model: str = "text-embedding-3-small"
     retrieval_vector_top_k: int = 12
     retrieval_keyword_top_k: int = 12
