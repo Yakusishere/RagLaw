@@ -1,0 +1,53 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/
+
+# Git / local tooling
+.codex/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+.venv/
+venv/
+env/
+
+# Node / frontend
+frontend/node_modules/
+frontend/dist/
+npm-debug.log*
+
+# Build artifacts
+build/
+dist/
+tmp/
+temp/
+logs/
+*.log
+
+# Environment and secrets
+.env
+.env.local
+.env.*.local
+.env.secret
+.python-version
+.secrets/*
+!.secrets/README.md
+
+# Local databases / exports
+*.sqlite
+*.sqlite3
+*.db
+*.csv.tmp
+*.jsonl.tmp
+
