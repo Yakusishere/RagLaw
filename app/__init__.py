@@ -1,0 +1,2 @@
+"""Law Helper backend package."""
+
