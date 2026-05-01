@@ -7,6 +7,7 @@ from psycopg import Connection
 from app.config import Settings, get_settings
 from app.db.connection import get_connection
 from app.db.repositories.retrieval_repository import RetrievalRepository
+from app.services.llm_service import LLMService
 from app.services.retrieval_service import RetrievalService
 
 
@@ -39,3 +40,9 @@ def get_retrieval_service(
         settings.openai_embedding_model,
     )
     return RetrievalService(repository, embedding_client, settings)
+
+
+def get_chat_service(
+    settings: Settings = Depends(get_app_settings),
+) -> LLMService:
+    return LLMService(settings.openai_api_key, settings.openai_chat_model)
