@@ -81,6 +81,23 @@ type DraftResponse = {
   cited_laws: string[]
   next_steps: string[]
 }
+
+type DraftTemplateField = {
+  name: string
+  label: string
+  type: string
+}
+
+type DraftTemplateMetadataResponse = {
+  template_type: "complaint_letter" | "demand_letter" | "lawsuit_draft"
+  template_name: string
+  required_fields: DraftTemplateField[]
+  optional_fields: DraftTemplateField[]
+}
+
+type DraftTemplateListResponse = {
+  templates: DraftTemplateMetadataResponse[]
+}
 ```
 
 ## Endpoints
@@ -506,6 +523,110 @@ async function streamChat(query: string, onEvent: (event: string, data: any) => 
   - 展示 `draft_text`
   - 同时展示 `cited_laws` 作为依据标签
 - 当前版本后端不返回模板字段定义，前端模板表单仍由前端侧静态配置驱动
+
+### `GET /draft/templates`
+
+用途：
+- 获取当前可用文书模板的元数据列表
+- 适合前端初始化模板选择器、动态表单配置或模板预览页
+
+成功响应：
+
+```json
+{
+  "templates": [
+    {
+      "template_type": "complaint_letter",
+      "template_name": "投诉信（商品质量纠纷）",
+      "required_fields": [
+        {
+          "name": "consumer_name",
+          "label": "投诉人姓名",
+          "type": "string"
+        }
+      ],
+      "optional_fields": [
+        {
+          "name": "consumer_id_no",
+          "label": "投诉人证件号",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "template_type": "demand_letter",
+      "template_name": "催告函（退款退货）",
+      "required_fields": [
+        {
+          "name": "sender_name",
+          "label": "发函人姓名",
+          "type": "string"
+        }
+      ],
+      "optional_fields": []
+    }
+  ]
+}
+```
+
+响应字段说明：
+- `templates: DraftTemplateMetadataResponse[]`
+  - 当前所有可用模板的最小元数据列表
+- `template_type: string`
+  - 模板类型标识
+  - 前端可直接将其作为模板选择值，并回传给 `POST /draft`
+- `template_name: string`
+  - 模板展示名称
+- `required_fields: DraftTemplateField[]`
+  - 必填字段定义
+- `optional_fields: DraftTemplateField[]`
+  - 可选字段定义
+
+前端展示建议：
+- 模板卡片或下拉项至少展示 `template_name`
+- 选择模板后，用 `required_fields` 和 `optional_fields` 渲染表单
+- `required_fields` 建议优先展示，并在提交前做前端必填校验
+
+### `GET /draft/templates/{template_type}`
+
+用途：
+- 获取单个文书模板的元数据
+- 适合前端按模板类型懒加载表单定义
+
+路径参数：
+- `template_type: "complaint_letter" | "demand_letter" | "lawsuit_draft"`
+  - 模板类型标识
+
+成功响应：
+
+```json
+{
+  "template_type": "complaint_letter",
+  "template_name": "投诉信（商品质量纠纷）",
+  "required_fields": [
+    {
+      "name": "consumer_name",
+      "label": "投诉人姓名",
+      "type": "string"
+    }
+  ],
+  "optional_fields": [
+    {
+      "name": "consumer_id_no",
+      "label": "投诉人证件号",
+      "type": "string"
+    }
+  ]
+}
+```
+
+响应字段说明：
+- 返回体结构与 `DraftTemplateMetadataResponse` 一致
+- 仅包含前端表单渲染所需的最小字段集，不包含正文模板或内部推导配置
+
+前端展示建议：
+- 适合在进入某个模板详情页或填写页时单独请求
+- 如果前端已调用 `GET /draft/templates` 并缓存结果，可不重复请求该接口
 
 ## Error Handling
 

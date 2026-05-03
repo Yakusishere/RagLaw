@@ -193,6 +193,23 @@ def test_get_draft_templates_returns_template_list():
     }
 
 
+def test_get_draft_templates_response_shape_is_stable():
+    app = create_app()
+    app.dependency_overrides[get_template_service] = lambda: FakeTemplateService()
+    client = TestClient(app)
+
+    response = client.get("/draft/templates")
+
+    body = response.json()
+    assert sorted(body.keys()) == ["templates"]
+    assert sorted(body["templates"][0].keys()) == [
+        "optional_fields",
+        "required_fields",
+        "template_name",
+        "template_type",
+    ]
+
+
 def test_get_draft_template_by_type_returns_single_template():
     app = create_app()
     app.dependency_overrides[get_template_service] = lambda: FakeTemplateService()
