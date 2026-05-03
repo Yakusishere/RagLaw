@@ -522,7 +522,7 @@ async function streamChat(query: string, onEvent: (event: string, data: any) => 
 - 若 `missing_fields.length === 0`：
   - 展示 `draft_text`
   - 同时展示 `cited_laws` 作为依据标签
-- 当前版本后端不返回模板字段定义，前端模板表单仍由前端侧静态配置驱动
+- 前端可通过 `GET /draft/templates` 或 `GET /draft/templates/{template_type}` 获取模板字段定义，再据此驱动表单渲染
 
 ### `GET /draft/templates`
 
