@@ -85,7 +85,7 @@ type DraftResponse = {
 type DraftTemplateField = {
   name: string
   label: string
-  type: string
+  type: "string" | "text" | "integer"
 }
 
 type DraftTemplateMetadataResponse = {
