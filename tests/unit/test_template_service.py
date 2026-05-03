@@ -99,6 +99,24 @@ def test_template_service_rejects_malformed_payload(tmp_path):
         raise AssertionError("expected ValidationError")
 
 
+def test_template_service_rejects_unknown_field_type(tmp_path):
+    payload = _template_payload()
+    payload["required_fields"][0]["type"] = "number"
+    _write_template_file(
+        tmp_path,
+        "template_complaint.json",
+        payload,
+    )
+
+    try:
+        FileTemplateService(template_dir=tmp_path)
+    except ValidationError as exc:
+        assert "required_fields" in str(exc)
+        assert "type" in str(exc)
+    else:
+        raise AssertionError("expected ValidationError")
+
+
 def test_template_service_lists_templates_in_stable_template_type_order(tmp_path):
     _write_template_file(
         tmp_path,

@@ -9,6 +9,8 @@ DraftTemplateType = Literal[
     "lawsuit_draft",
 ]
 
+DraftTemplateFieldType = Literal["string", "text", "integer"]
+
 
 class DraftRequest(BaseModel):
     template_type: DraftTemplateType
@@ -27,7 +29,7 @@ class DraftResponse(BaseModel):
 class DraftTemplateFieldResponse(BaseModel):
     name: str
     label: str
-    type: str
+    type: DraftTemplateFieldType
 
 
 class DraftTemplateMetadataResponse(BaseModel):
@@ -44,7 +46,7 @@ class DraftTemplateListResponse(BaseModel):
 class DraftTemplateField(BaseModel):
     name: str
     label: str
-    type: str
+    type: DraftTemplateFieldType
 
 
 class DraftTemplateDerivedPlaceholder(BaseModel):

@@ -628,6 +628,18 @@ async function streamChat(query: string, onEvent: (event: string, data: any) => 
 - 适合在进入某个模板详情页或填写页时单独请求
 - 如果前端已调用 `GET /draft/templates` 并缓存结果，可不重复请求该接口
 
+错误响应：
+
+```json
+{
+  "detail": "unknown template_type: not_exists"
+}
+```
+
+前端错误处理建议：
+- 当成模板类型失效或前端缓存过期处理
+- 可回退到重新请求 `GET /draft/templates` 并让用户重新选择模板
+
 ## Error Handling
 
 ### `422 Unprocessable Entity`

@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+from functools import lru_cache
 
 from fastapi import Depends
 from openai import OpenAI
@@ -11,9 +12,6 @@ from app.services.draft_service import DraftService
 from app.services.llm_service import LLMService
 from app.services.retrieval_service import RetrievalService
 from app.services.template_service import FileTemplateService
-
-
-_template_service = FileTemplateService()
 
 
 def get_app_settings() -> Settings:
@@ -58,8 +56,9 @@ def get_chat_service(
     )
 
 
+@lru_cache
 def get_template_service() -> FileTemplateService:
-    return _template_service
+    return FileTemplateService()
 
 
 def get_draft_service(
