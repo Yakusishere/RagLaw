@@ -22,3 +22,29 @@ class DraftResponse(BaseModel):
     missing_fields: list[str]
     cited_laws: list[str]
     next_steps: list[str]
+
+
+class DraftTemplateField(BaseModel):
+    name: str
+    label: str
+    type: str
+
+
+class DraftTemplateDerivedPlaceholder(BaseModel):
+    name: str
+    from_: list[str] = Field(alias="from")
+    rule: str
+
+
+class DraftTemplate(BaseModel):
+    template_id: str
+    template_name: str
+    doc_type: str
+    template_type: DraftTemplateType
+    scene: str
+    status: str
+    required_fields: list[DraftTemplateField]
+    optional_fields: list[DraftTemplateField] = Field(default_factory=list)
+    derived_placeholders: list[DraftTemplateDerivedPlaceholder] = Field(default_factory=list)
+    suggested_citations: list[str] = Field(default_factory=list)
+    template_text: str
