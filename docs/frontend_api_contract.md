@@ -5,7 +5,8 @@
 ## Base URL
 
 - 本地开发默认：`http://127.0.0.1:8000`
-- 所有请求和响应均使用 `application/json`
+- 请求体默认使用 `application/json`
+- 响应类型以各接口约定为准，`/chat/stream` 返回 `text/event-stream`
 
 ## Endpoints
 
@@ -207,6 +208,62 @@
 - `answer.basis` 适合展示为短标签
 - `citations` 适合展示为“展开查看依据”
 
+### `POST /chat/stream`
+
+用途：
+- 基于检索结果生成流式问答结果
+- 适合需要逐步渲染正文的前端页面
+
+请求体：
+
+```json
+{
+  "query": "商家拒绝退款怎么办"
+}
+```
+
+说明：
+- 请求体与 `POST /chat` 一致
+- 当前版本不接受 `top_k`
+- 请求方式为 `POST`，不能直接用原生浏览器 `EventSource` 发起
+
+响应类型：
+
+- `text/event-stream`
+
+响应行为：
+
+- 服务接受请求并开始流式输出后，通常返回 HTTP `200`
+- 若检索或模型调用在流开始后失败，后端通常会在 SSE 通道内发送 `error` 事件，而不是再切换成 HTTP `500`
+- HTTP `500` 更应视为流尚未建立前的服务端失败；请求体校验失败仍返回 HTTP `422`
+
+事件说明：
+
+- `meta`
+  - 开头发送一次
+  - `data` 示例：`{"query":"商家拒绝退款怎么办"}`
+- `delta`
+  - 增量正文片段
+  - `data.text` 为当前追加文本
+- `citations`
+  - 流结束前统一发送一次
+  - 包含 `citations`、`retrieval`、`basis`、`insufficient_basis`、`suggested_steps`、`risk_notes`
+- `done`
+  - 正常结束标记
+  - `data` 当前为 `{"ok":true}`
+- `error`
+  - 异常结束标记
+  - `data.message` 为错误说明
+
+前端消费建议：
+- 原生浏览器 `EventSource` 只能发 `GET`，不能直接用于这个 `POST` 接口
+- 前端应使用 `fetch()` 流式读取，或使用支持 `POST` 的 SSE helper / polyfill
+- 用 `delta` 渐进渲染正文
+- 将 `delta` 作为普通文本片段顺序追加，不要单独按段落重排
+- 收到 `citations` 后再统一渲染引用区、依据标签和附加说明
+- 收到 `done` 后关闭当前加载状态
+- 收到 `error` 后停止流式渲染并提示用户重试
+
 ## Error Handling
 
 ### `422 Unprocessable Entity`
@@ -225,6 +282,7 @@
 - 数据库不可用
 - 上游模型接口不可用
 - 服务内部异常
+- 对 `/chat/stream` 而言，这类状态更常见于流建立前失败；如果失败发生在流开始后，通常会改为 SSE `error` 事件
 
 前端建议：
 - 给用户展示通用失败提示
@@ -235,7 +293,8 @@
 
 - `/retrieve` 和 `/chat` 都依赖当前已 promote 的法规数据和向量数据
 - `/chat` 的引用来自检索结果，不保证每次顺序完全一致，但字段结构稳定
-- 当前后端未提供流式响应，前端按普通单次请求处理即可
+- `/chat/stream` 事件顺序应按 `meta -> delta* -> citations -> done` 处理；异常场景可能以 `error` 提前结束
+- `/chat/stream` 是 `POST` SSE，不适合直接用原生 `EventSource`
 - 当前后端未提供会话上下文，前端若要做多轮对话，需要自行保留历史问题和历史回答
 
 ## Real Test Cases

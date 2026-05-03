@@ -26,6 +26,7 @@ Generate real embeddings:
 
 ```powershell
 $env:OPENAI_API_KEY="your_api_key"
+$env:OPENAI_BASE_URL="https://dashscope.aliyuncs.com/compatible-mode/v1"  # 仅在使用 DashScope 等 OpenAI-compatible provider 时设置
 python .\scripts\build_openai_embeddings.py `
   --chunks .\build\ingestion\chunks.jsonl `
   --output .\build\embeddings\openai_embeddings.jsonl `
@@ -52,8 +53,32 @@ python .\scripts\load_embeddings_to_pg.py `
 
 After `.env.local` is configured and the promoted corpus / embeddings exist:
 
-```bash
-curl http://127.0.0.1:8000/health
-curl -X POST http://127.0.0.1:8000/retrieve -H "Content-Type: application/json" -d "{\"query\":\"商家拒绝退款怎么办\"}"
-curl -X POST http://127.0.0.1:8000/chat -H "Content-Type: application/json" -d "{\"query\":\"网购商品质量有问题，商家不同意退货怎么办？\"}"
+```powershell
+curl.exe http://127.0.0.1:8000/health
+curl.exe -X POST http://127.0.0.1:8000/retrieve `
+  -H "Content-Type: application/json" `
+  --data '{"query":"商家拒绝退款怎么办"}'
+curl.exe -X POST http://127.0.0.1:8000/chat `
+  -H "Content-Type: application/json" `
+  --data '{"query":"网购商品质量有问题，商家不同意退货怎么办？"}'
 ```
+
+Expected success:
+- `/health` returns a JSON body containing `"status":"ok"`
+- `/retrieve` returns JSON with a non-empty `results` array when promoted data is present
+- `/chat` returns JSON containing `answer.summary`, `citations`, and `retrieval.result_count`
+
+SSE smoke test:
+
+```powershell
+curl.exe -N -X POST http://127.0.0.1:8000/chat/stream `
+  -H "Content-Type: application/json" `
+  --data '{"query":"商家拒绝退款怎么办"}'
+```
+
+Expected success:
+- HTTP status is `200`
+- output starts with `event: meta`
+- then includes one or more `event: delta`
+- and ends with `event: citations` plus `event: done`
+- if a runtime failure happens after streaming starts, expect `event: error` on the SSE channel rather than an HTTP `500` body
