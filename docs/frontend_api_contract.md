@@ -78,6 +78,7 @@ type DraftResponse = {
   template_name: string
   draft_text: string
   missing_fields: string[]
+  missing_materials: string[]
   cited_laws: string[]
   next_steps: string[]
 }
@@ -490,11 +491,17 @@ async function streamChat(query: string, onEvent: (event: string, data: any) => 
   "template_name": "投诉信（商品质量纠纷）",
   "draft_text": "投诉信正文",
   "missing_fields": [],
+  "missing_materials": [
+    "订单页面",
+    "支付记录"
+  ],
   "cited_laws": [
     "《中华人民共和国消费者权益保护法》第二十四条"
   ],
   "next_steps": [
-    "核对文书内容并补齐证据附件后再正式提交。"
+    "优先补齐以下材料：订单页面、支付记录。",
+    "核对投诉对象、事实经过、具体诉求和处理期限是否准确。",
+    "先向商家或平台提交投诉信并保留提交记录。"
   ]
 }
 ```
@@ -510,15 +517,23 @@ async function streamChat(query: string, onEvent: (event: string, data: any) => 
 - `missing_fields: string[]`
   - 缺失的必填字段名列表
   - 前端应优先基于这个数组回填表单校验提示
+- `missing_materials: string[]`
+  - 后端基于模板类型和已填写事实保守判断出的“建议优先补齐材料”
+  - 始终返回数组；无缺失时返回 `[]`
+  - 这是材料提示，不等同于法律上已最终认定“绝对缺失”
 - `cited_laws: string[]`
   - 本次草稿生成使用到的法条标签列表
 - `next_steps: string[]`
   - 后端给出的后续处理建议
+  - 当前会根据 `template_type` 以及是否存在 `missing_fields` / `missing_materials` 变化
 
 前端展示建议：
 - 若 `missing_fields.length > 0`：
   - 不展示“最终文书完成”态
   - 优先高亮对应表单项，并展示 `next_steps`
+- 若 `missing_materials.length > 0`：
+  - 在草稿区或证据区额外提示用户继续补充材料
+  - 不要把它当成字段校验错误；它和 `missing_fields` 的语义不同
 - 若 `missing_fields.length === 0`：
   - 展示 `draft_text`
   - 同时展示 `cited_laws` 作为依据标签
