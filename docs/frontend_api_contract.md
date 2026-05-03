@@ -8,6 +8,67 @@
 - 请求体默认使用 `application/json`
 - 响应类型以各接口约定为准，`/chat/stream` 返回 `text/event-stream`
 
+## Shared Types
+
+前端可直接按以下 TypeScript 结构建类型：
+
+```ts
+type CitationPayload = {
+  chunk_id: string
+  citation_label: string
+  title: string
+  doc_type: string
+  article_no: string | null
+  effective_date: string | null
+  source_name: string
+  source_url: string
+}
+
+type ChatAnswer = {
+  summary: string
+  basis: string[]
+  suggested_steps: string[]
+  risk_notes: string[]
+  insufficient_basis: boolean
+}
+
+type ChatResponse = {
+  query: string
+  answer: ChatAnswer
+  citations: CitationPayload[]
+  retrieval: {
+    result_count: number
+  }
+}
+
+type ChatStreamMetaEvent = {
+  query: string
+}
+
+type ChatStreamDeltaEvent = {
+  text: string
+}
+
+type ChatStreamCitationsEvent = {
+  citations: CitationPayload[]
+  retrieval: {
+    result_count: number
+  }
+  basis: string[]
+  insufficient_basis: boolean
+  suggested_steps: string[]
+  risk_notes: string[]
+}
+
+type ChatStreamDoneEvent = {
+  ok: true
+}
+
+type ChatStreamErrorEvent = {
+  message: string
+}
+```
+
 ## Endpoints
 
 ### `GET /health`
@@ -241,19 +302,52 @@
 
 - `meta`
   - 开头发送一次
-  - `data` 示例：`{"query":"商家拒绝退款怎么办"}`
+  - `data` 结构：`ChatStreamMetaEvent`
 - `delta`
   - 增量正文片段
-  - `data.text` 为当前追加文本
+  - `data` 结构：`ChatStreamDeltaEvent`
+  - `data.text` 为当前追加文本片段，前端应按顺序直接 append
+  - 可能包含换行、Markdown 标记或半句，不保证每个事件都是完整段落
 - `citations`
   - 流结束前统一发送一次
-  - 包含 `citations`、`retrieval`、`basis`、`insufficient_basis`、`suggested_steps`、`risk_notes`
+  - `data` 结构：`ChatStreamCitationsEvent`
 - `done`
   - 正常结束标记
-  - `data` 当前为 `{"ok":true}`
+  - `data` 结构：`ChatStreamDoneEvent`
 - `error`
   - 异常结束标记
-  - `data.message` 为错误说明
+  - `data` 结构：`ChatStreamErrorEvent`
+  - `error` 可能出现在尚未收到任何 `delta` 之前，也可能出现在收到部分 `delta` 之后
+
+典型事件序列示例：
+
+```text
+event: meta
+data: {"query":"商家拒绝退款怎么办"}
+
+event: delta
+data: {"text":"### 1. 初步判断\n"}
+
+event: delta
+data: {"text":"商家是否有权拒绝退款，需根据交易方式、商品性质及具体原因进行判断。"}
+
+event: citations
+data: {"citations":[{"chunk_id":"law:1","citation_label":"《中华人民共和国消费者权益保护法》第二十五条","title":"中华人民共和国消费者权益保护法","doc_type":"law","article_no":"第二十五条","effective_date":"2014-03-15","source_name":"全国人大网","source_url":"https://www.npc.gov.cn/"}],"retrieval":{"result_count":8},"basis":["《中华人民共和国消费者权益保护法》第二十五条"],"insufficient_basis":false,"suggested_steps":["保留证据并先向商家主张退换或赔偿。"],"risk_notes":["模型回答受限于当前检索材料。"]}
+
+event: done
+data: {"ok":true}
+```
+
+无检索结果时的约定：
+
+- 事件序列仍然是 `meta -> delta -> citations -> done`
+- 不会因为“没找到依据”直接发送 `error`
+- 此时：
+  - `delta.text` 为“依据不足”提示文本
+  - `citations` 为空数组 `[]`
+  - `basis` 为空数组 `[]`
+  - `retrieval.result_count` 为 `0`
+  - `insufficient_basis` 为 `true`
 
 前端消费建议：
 - 原生浏览器 `EventSource` 只能发 `GET`，不能直接用于这个 `POST` 接口
@@ -263,6 +357,72 @@
 - 收到 `citations` 后再统一渲染引用区、依据标签和附加说明
 - 收到 `done` 后关闭当前加载状态
 - 收到 `error` 后停止流式渲染并提示用户重试
+
+推荐前端状态结构：
+
+```ts
+type ChatStreamState = {
+  query: string
+  text: string
+  citations: CitationPayload[]
+  basis: string[]
+  retrievalResultCount: number
+  insufficientBasis: boolean
+  suggestedSteps: string[]
+  riskNotes: string[]
+  done: boolean
+  errorMessage: string | null
+}
+```
+
+推荐处理逻辑：
+- 收到 `meta`：设置 `query`
+- 收到 `delta`：`text += data.text`
+- 收到 `citations`：一次性写入 `citations`、`basis`、`retrievalResultCount`、`insufficientBasis`、`suggestedSteps`、`riskNotes`
+- 收到 `done`：设置 `done = true`
+- 收到 `error`：设置 `errorMessage`，并停止继续读取
+
+最小 `fetch()` 读取示例：
+
+```ts
+async function streamChat(query: string, onEvent: (event: string, data: any) => void) {
+  const response = await fetch("http://127.0.0.1:8000/chat/stream", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ query }),
+  })
+
+  if (!response.ok || !response.body) {
+    throw new Error(`HTTP ${response.status}`)
+  }
+
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder("utf-8")
+  let buffer = ""
+
+  while (true) {
+    const { value, done } = await reader.read()
+    if (done) break
+
+    buffer += decoder.decode(value, { stream: true })
+    const frames = buffer.split("\n\n")
+    buffer = frames.pop() ?? ""
+
+    for (const frame of frames) {
+      const lines = frame.split("\n")
+      const eventLine = lines.find((line) => line.startsWith("event: "))
+      const dataLine = lines.find((line) => line.startsWith("data: "))
+      if (!eventLine || !dataLine) continue
+
+      const event = eventLine.slice(7)
+      const data = JSON.parse(dataLine.slice(6))
+      onEvent(event, data)
+    }
+  }
+}
+```
 
 ## Error Handling
 
