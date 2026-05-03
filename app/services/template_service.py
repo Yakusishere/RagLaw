@@ -2,6 +2,8 @@ import json
 from pathlib import Path
 from types import SimpleNamespace
 
+TEMPLATES_DIR = Path(__file__).resolve().parents[2] / "docs" / "phase2_materials"
+
 
 class FileTemplateService:
     def __init__(self) -> None:
@@ -15,13 +17,7 @@ class FileTemplateService:
 
     def _load_templates(self) -> dict[str, SimpleNamespace]:
         templates: dict[str, SimpleNamespace] = {}
-        for template_path in self._templates_dir().glob("template_*.json"):
+        for template_path in TEMPLATES_DIR.glob("template_*.json"):
             payload = json.loads(template_path.read_text(encoding="utf-8"))
             templates[payload["template_type"]] = SimpleNamespace(**payload)
         return templates
-
-    def _templates_dir(self) -> Path:
-        templates_dir = Path(__file__).resolve().parents[2] / "docs" / "phase2_materials"
-        if templates_dir.is_dir():
-            return templates_dir
-        raise FileNotFoundError("docs/phase2_materials not found")
