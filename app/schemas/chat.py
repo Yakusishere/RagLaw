@@ -1,3 +1,5 @@
+from typing import Any, Literal
+
 from pydantic import BaseModel
 
 from app.schemas.retrieval import CitationPayload
@@ -20,3 +22,8 @@ class ChatResponse(BaseModel):
     answer: ChatAnswer
     citations: list[CitationPayload]
     retrieval: dict[str, int]
+
+
+class ChatStreamEvent(BaseModel):
+    event: Literal["meta", "delta", "citations", "done", "error"]
+    data: dict[str, Any]
