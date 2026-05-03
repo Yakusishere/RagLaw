@@ -1,6 +1,12 @@
 from pydantic import ValidationError
 
-from app.schemas.draft import DraftRequest, DraftResponse
+from app.schemas.draft import (
+    DraftRequest,
+    DraftResponse,
+    DraftTemplateFieldResponse,
+    DraftTemplateListResponse,
+    DraftTemplateMetadataResponse,
+)
 
 
 def test_draft_request_accepts_template_type_and_optional_facts():
@@ -49,3 +55,49 @@ def test_draft_response_rejects_unknown_template_type():
         assert "template_type" in str(exc)
     else:
         raise AssertionError("expected ValidationError")
+
+
+def test_draft_template_metadata_response_supports_field_lists():
+    response = DraftTemplateMetadataResponse(
+        template_type="complaint_letter",
+        template_name="投诉信（商品质量纠纷）",
+        required_fields=[
+            DraftTemplateFieldResponse(
+                name="consumer_name",
+                label="投诉人姓名",
+                type="string",
+            )
+        ],
+        optional_fields=[
+            DraftTemplateFieldResponse(
+                name="consumer_id_no",
+                label="投诉人证件号",
+                type="string",
+            )
+        ],
+    )
+
+    assert response.required_fields[0].name == "consumer_name"
+    assert response.optional_fields[0].label == "投诉人证件号"
+
+
+def test_draft_template_list_response_wraps_templates():
+    response = DraftTemplateListResponse(
+        templates=[
+            DraftTemplateMetadataResponse(
+                template_type="complaint_letter",
+                template_name="投诉信（商品质量纠纷）",
+                required_fields=[],
+                optional_fields=[],
+            ),
+            DraftTemplateMetadataResponse(
+                template_type="demand_letter",
+                template_name="催告函（退款退货）",
+                required_fields=[],
+                optional_fields=[],
+            ),
+        ]
+    )
+
+    assert len(response.templates) == 2
+    assert response.templates[1].template_type == "demand_letter"

@@ -24,6 +24,23 @@ class DraftResponse(BaseModel):
     next_steps: list[str]
 
 
+class DraftTemplateFieldResponse(BaseModel):
+    name: str
+    label: str
+    type: str
+
+
+class DraftTemplateMetadataResponse(BaseModel):
+    template_type: DraftTemplateType
+    template_name: str
+    required_fields: list[DraftTemplateFieldResponse]
+    optional_fields: list[DraftTemplateFieldResponse]
+
+
+class DraftTemplateListResponse(BaseModel):
+    templates: list[DraftTemplateMetadataResponse]
+
+
 class DraftTemplateField(BaseModel):
     name: str
     label: str
