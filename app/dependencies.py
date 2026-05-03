@@ -7,8 +7,10 @@ from psycopg import Connection
 from app.config import Settings, get_settings
 from app.db.connection import get_connection
 from app.db.repositories.retrieval_repository import RetrievalRepository
+from app.services.draft_service import DraftService
 from app.services.llm_service import LLMService
 from app.services.retrieval_service import RetrievalService
+from app.services.template_service import FileTemplateService
 
 
 def get_app_settings() -> Settings:
@@ -50,4 +52,15 @@ def get_chat_service(
         settings.openai_api_key,
         settings.openai_chat_model,
         settings.openai_base_url,
+    )
+
+
+def get_draft_service(
+    settings: Settings = Depends(get_app_settings),
+    conn: Connection = Depends(get_db_connection),
+) -> DraftService:
+    return DraftService(
+        FileTemplateService(),
+        get_retrieval_service(settings=settings, conn=conn),
+        get_chat_service(settings=settings),
     )

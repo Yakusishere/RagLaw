@@ -1,0 +1,66 @@
+{
+  "template_id": "demand_letter_refund_return_v1",
+  "template_name": "催告函（退款退货）",
+  "doc_type": "template",
+  "template_type": "demand_letter",
+  "scene": "refund_return_dispute",
+  "status": "draft_ready",
+  "required_fields": [
+    { "name": "sender_name", "label": "发函人姓名", "type": "string" },
+    { "name": "sender_contact", "label": "发函人联系方式", "type": "string" },
+    { "name": "receiver_name", "label": "收函商家名称", "type": "string" },
+    { "name": "receiver_address_or_contact", "label": "收函商家联系方式或地址", "type": "string" },
+    { "name": "platform_name", "label": "交易平台名称", "type": "string" },
+    { "name": "product_name", "label": "商品名称", "type": "string" },
+    { "name": "order_no", "label": "订单号", "type": "string" },
+    { "name": "transaction_time", "label": "交易时间", "type": "string" },
+    { "name": "payment_amount", "label": "支付金额", "type": "string" },
+    { "name": "issue_summary", "label": "问题摘要", "type": "text" },
+    { "name": "breach_summary", "label": "违约或拒绝履行情况", "type": "text" },
+    { "name": "negotiation_history", "label": "协商经过", "type": "text" },
+    { "name": "demand_items", "label": "催告事项", "type": "text" },
+    { "name": "deadline_days", "label": "履行期限（天）", "type": "integer" },
+    { "name": "letter_date", "label": "发函日期", "type": "string" }
+  ],
+  "optional_fields": [
+    { "name": "sender_id_no", "label": "发函人证件号", "type": "string" },
+    { "name": "receiver_credit_code", "label": "商家统一社会信用代码", "type": "string" },
+    { "name": "refund_amount", "label": "退款金额", "type": "string" },
+    { "name": "compensation_amount", "label": "赔偿金额", "type": "string" },
+    { "name": "payment_account", "label": "收款账户", "type": "text" },
+    { "name": "legal_basis", "label": "自定义依据说明", "type": "text" },
+    { "name": "attachments_summary", "label": "附件清单", "type": "text" }
+  ],
+  "derived_placeholders": [
+    {
+      "name": "sender_id_block",
+      "from": ["sender_id_no"],
+      "rule": "有值时渲染为“证件号：...”，无值时置空"
+    },
+    {
+      "name": "payment_account_block",
+      "from": ["payment_account"],
+      "rule": "有值时渲染为收款账户段，无值时置空"
+    },
+    {
+      "name": "attachments_block",
+      "from": ["attachments_summary"],
+      "rule": "有值时渲染为附件清单段，无值时置空"
+    },
+    {
+      "name": "legal_basis_or_default",
+      "from": ["legal_basis"],
+      "rule": "优先使用 legal_basis；缺失时使用模板默认依据段"
+    }
+  ],
+  "suggested_citations": [
+    "《中华人民共和国消费者权益保护法》第二十四条",
+    "《中华人民共和国消费者权益保护法》第二十五条",
+    "《中华人民共和国消费者权益保护法》第五十五条",
+    "《中华人民共和国消费者权益保护法实施条例》第十八条",
+    "《中华人民共和国消费者权益保护法实施条例》第十九条",
+    "《侵害消费者权益行为处罚办法》第八条",
+    "《侵害消费者权益行为处罚办法》第九条"
+  ],
+  "template_text": "催告函\n\n致：{{receiver_name}}\n联系方式/地址：{{receiver_address_or_contact}}\n平台名称：{{platform_name}}\n\n发函人：{{sender_name}}\n联系方式：{{sender_contact}}\n{{sender_id_block}}\n\n鉴于本人于 {{transaction_time}} 购买 {{product_name}}，订单号为 {{order_no}}，实付金额为人民币 {{payment_amount}} 元。交易完成后出现如下问题：{{issue_summary}}。\n\n截至本函出具之日，您方存在以下未妥善履行义务的情形：\n{{breach_summary}}\n\n本人此前已通过 {{negotiation_history}} 与您方沟通处理，但问题至今未解决。\n\n依据说明：\n{{legal_basis_or_default}}\n\n现正式催告如下：\n{{demand_items}}\n\n请贵方于收到本函后 {{deadline_days}} 日内完成处理。{{payment_account_block}}\n\n如逾期未履行，本人将依法继续采取投诉、举报、申请调解、提起诉讼等措施，并主张因此产生的合理维权成本。\n\n{{attachments_block}}\n\n发函人：{{sender_name}}\n日期：{{letter_date}}"
+}

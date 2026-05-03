@@ -1,0 +1,64 @@
+{
+  "template_id": "complaint_letter_quality_dispute_v1",
+  "template_name": "投诉信（商品质量纠纷）",
+  "doc_type": "template",
+  "template_type": "complaint_letter",
+  "scene": "quality_dispute",
+  "status": "draft_ready",
+  "required_fields": [
+    { "name": "consumer_name", "label": "投诉人姓名", "type": "string" },
+    { "name": "consumer_contact", "label": "投诉人联系方式", "type": "string" },
+    { "name": "merchant_name", "label": "被投诉商家名称", "type": "string" },
+    { "name": "merchant_contact_or_address", "label": "被投诉商家联系方式或地址", "type": "string" },
+    { "name": "platform_name", "label": "交易平台名称", "type": "string" },
+    { "name": "product_name", "label": "商品名称", "type": "string" },
+    { "name": "order_no", "label": "订单号", "type": "string" },
+    { "name": "purchase_channel", "label": "购买渠道", "type": "string" },
+    { "name": "purchase_time", "label": "购买时间", "type": "string" },
+    { "name": "payment_amount", "label": "实付金额", "type": "string" },
+    { "name": "issue_summary", "label": "问题摘要", "type": "string" },
+    { "name": "issue_details", "label": "问题详情", "type": "text" },
+    { "name": "negotiation_history", "label": "协商经过", "type": "text" },
+    { "name": "claim_items", "label": "具体诉求", "type": "text" },
+    { "name": "claim_deadline_days", "label": "要求处理期限（天）", "type": "integer" },
+    { "name": "attachments_summary", "label": "附件说明", "type": "text" },
+    { "name": "complaint_date", "label": "投诉日期", "type": "string" }
+  ],
+  "optional_fields": [
+    { "name": "consumer_id_no", "label": "投诉人证件号", "type": "string" },
+    { "name": "merchant_unified_social_credit_code", "label": "商家统一社会信用代码", "type": "string" },
+    { "name": "product_category", "label": "商品类别", "type": "string" },
+    { "name": "receipt_or_invoice_no", "label": "票据编号", "type": "string" },
+    { "name": "legal_basis", "label": "自定义依据说明", "type": "text" },
+    { "name": "regulator_name", "label": "受理机关名称", "type": "string" },
+    { "name": "extra_losses", "label": "其他损失", "type": "text" }
+  ],
+  "derived_placeholders": [
+    {
+      "name": "consumer_id_block",
+      "from": ["consumer_id_no"],
+      "rule": "有值时渲染为“证件号：...”，无值时置空"
+    },
+    {
+      "name": "merchant_credit_code_block",
+      "from": ["merchant_unified_social_credit_code"],
+      "rule": "有值时渲染为“统一社会信用代码：...”，无值时置空"
+    },
+    {
+      "name": "legal_basis_or_default",
+      "from": ["legal_basis"],
+      "rule": "优先使用 legal_basis；缺失时使用模板默认依据段"
+    }
+  ],
+  "suggested_citations": [
+    "《中华人民共和国消费者权益保护法》第二十四条",
+    "《中华人民共和国消费者权益保护法》第二十五条",
+    "《中华人民共和国消费者权益保护法》第三十九条",
+    "《中华人民共和国消费者权益保护法》第五十五条",
+    "《中华人民共和国消费者权益保护法实施条例》第十八条",
+    "《中华人民共和国消费者权益保护法实施条例》第十九条",
+    "《中华人民共和国消费者权益保护法实施条例》第二十六条",
+    "《中华人民共和国消费者权益保护法实施条例》第四十六条"
+  ],
+  "template_text": "投诉信\n\n投诉人：{{consumer_name}}\n联系方式：{{consumer_contact}}\n{{consumer_id_block}}\n\n被投诉人：{{merchant_name}}\n联系方式/地址：{{merchant_contact_or_address}}\n平台名称：{{platform_name}}\n{{merchant_credit_code_block}}\n\n投诉事项：{{product_name}} 商品质量纠纷\n\n事实经过：\n本人于 {{purchase_time}} 通过 {{purchase_channel}} 购买 {{product_name}}，订单号为 {{order_no}}，实付金额为人民币 {{payment_amount}} 元。收货/使用后发现：{{issue_summary}}。\n\n具体情况如下：\n{{issue_details}}\n\n在问题发生后，本人已通过 {{negotiation_history}} 与商家/平台进行沟通，但截至目前仍未得到妥善处理。\n\n依据说明：\n{{legal_basis_or_default}}\n\n本人现提出如下诉求：\n{{claim_items}}\n\n请于收到本投诉后 {{claim_deadline_days}} 日内予以处理并书面回复。若逾期未妥善解决，本人将继续通过 12315 投诉、请求行政调解、申请仲裁或向人民法院提起诉讼等方式依法维权。\n\n附件清单：\n{{attachments_summary}}\n\n投诉人：{{consumer_name}}\n日期：{{complaint_date}}"
+}

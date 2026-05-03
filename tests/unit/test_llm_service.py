@@ -2,7 +2,11 @@ from pathlib import Path
 
 from app.schemas.chat import ChatStreamEvent
 from app.schemas.retrieval import CitationPayload, RetrievalResponse, RetrievalResultItem
-from app.services.llm_service import LLMService, build_grounded_prompt
+from app.services.llm_service import (
+    LLMService,
+    build_drafting_prompt,
+    build_grounded_prompt,
+)
 
 
 def build_retrieval_response() -> RetrievalResponse:
@@ -101,6 +105,22 @@ def test_build_grounded_prompt_includes_citation_labels():
     assert "《中华人民共和国消费者权益保护法》第二十四条" in prompt
 
 
+def test_build_drafting_prompt_includes_template_facts_and_citations():
+    response = build_retrieval_response()
+
+    prompt = build_drafting_prompt(
+        template_text="投诉人：{{consumer_name}}",
+        facts={"consumer_name": "张三", "merchant_name": "某商家"},
+        retrieval_response=response,
+    )
+
+    assert "模板正文：" in prompt
+    assert "投诉人：{{consumer_name}}" in prompt
+    assert "- consumer_name: 张三" in prompt
+    assert "- merchant_name: 某商家" in prompt
+    assert "《中华人民共和国消费者权益保护法》第二十四条" in prompt
+
+
 def test_llm_service_loads_prompt_relative_to_module(monkeypatch):
     monkeypatch.chdir(Path(__file__).resolve().parent)
 
@@ -130,6 +150,44 @@ def test_answer_returns_supported_chat_response():
     assert response.retrieval == {"result_count": 1}
     assert len(response.citations) == 1
     assert client.responses.create_calls
+
+
+def test_draft_document_returns_rendered_text():
+    client = FakeOpenAIClient(create_text="投诉信正文")
+    service = LLMService(
+        api_key="test-key",
+        model_name="test-model",
+        client=client,
+    )
+
+    draft_text = service.draft_document(
+        template_text="投诉人：{{consumer_name}}",
+        facts={"consumer_name": "张三", "merchant_name": "某商家"},
+        retrieval_response=build_retrieval_response(),
+    )
+
+    assert draft_text == "投诉信正文"
+    assert client.responses.create_calls
+
+
+def test_draft_document_normalizes_upstream_create_failure():
+    service = LLMService(
+        api_key="test-key",
+        model_name="test-model",
+        client=FakeOpenAIClient(create_exc=ValueError("boom")),
+    )
+
+    try:
+        service.draft_document(
+            template_text="投诉人：{{consumer_name}}",
+            facts={"consumer_name": "张三"},
+            retrieval_response=build_retrieval_response(),
+        )
+        assert False, "expected draft_document() to raise RuntimeError"
+    except RuntimeError as exc:
+        assert str(exc) == "上游模型调用失败"
+        assert isinstance(exc.__cause__, ValueError)
+        assert str(exc.__cause__) == "boom"
 
 
 def test_answer_returns_insufficient_basis_without_upstream_call():

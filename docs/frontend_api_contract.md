@@ -67,6 +67,20 @@ type ChatStreamDoneEvent = {
 type ChatStreamErrorEvent = {
   message: string
 }
+
+type DraftRequest = {
+  template_type: "complaint_letter" | "demand_letter" | "lawsuit_draft"
+  facts: Record<string, string>
+}
+
+type DraftResponse = {
+  template_type: "complaint_letter" | "demand_letter" | "lawsuit_draft"
+  template_name: string
+  draft_text: string
+  missing_fields: string[]
+  cited_laws: string[]
+  next_steps: string[]
+}
 ```
 
 ## Endpoints
@@ -424,6 +438,75 @@ async function streamChat(query: string, onEvent: (event: string, data: any) => 
 }
 ```
 
+### `POST /draft`
+
+用途：
+- 基于 Phase 2 文书模板、结构化事实和检索依据生成文书草稿
+- 适合“投诉信/律师函/起诉状草稿生成页”
+
+请求体：
+
+```json
+{
+  "template_type": "complaint_letter",
+  "facts": {
+    "consumer_name": "张三",
+    "merchant_name": "某商家",
+    "product_name": "蓝牙耳机"
+  }
+}
+```
+
+字段说明：
+- `template_type: "complaint_letter" | "demand_letter" | "lawsuit_draft"`
+  - 文书模板类型
+  - 当前只接受后端已内置的固定枚举值
+- `facts: Record<string, string>`
+  - 文书生成所需的结构化字段
+  - key 必须与前端当前模板表单字段名保持一致
+
+成功响应：
+
+```json
+{
+  "template_type": "complaint_letter",
+  "template_name": "投诉信（商品质量纠纷）",
+  "draft_text": "投诉信正文",
+  "missing_fields": [],
+  "cited_laws": [
+    "《中华人民共和国消费者权益保护法》第二十四条"
+  ],
+  "next_steps": [
+    "核对文书内容并补齐证据附件后再正式提交。"
+  ]
+}
+```
+
+响应字段说明：
+- `template_type: string`
+  - 与请求中的模板类型一致
+- `template_name: string`
+  - 当前模板的人类可读名称
+- `draft_text: string`
+  - 生成出的文书正文
+  - 当必填字段未补全时，返回空字符串 `""`
+- `missing_fields: string[]`
+  - 缺失的必填字段名列表
+  - 前端应优先基于这个数组回填表单校验提示
+- `cited_laws: string[]`
+  - 本次草稿生成使用到的法条标签列表
+- `next_steps: string[]`
+  - 后端给出的后续处理建议
+
+前端展示建议：
+- 若 `missing_fields.length > 0`：
+  - 不展示“最终文书完成”态
+  - 优先高亮对应表单项，并展示 `next_steps`
+- 若 `missing_fields.length === 0`：
+  - 展示 `draft_text`
+  - 同时展示 `cited_laws` 作为依据标签
+- 当前版本后端不返回模板字段定义，前端模板表单仍由前端侧静态配置驱动
+
 ## Error Handling
 
 ### `422 Unprocessable Entity`
@@ -456,6 +539,7 @@ async function streamChat(query: string, onEvent: (event: string, data: any) => 
 - `/chat/stream` 事件顺序应按 `meta -> delta* -> citations -> done` 处理；异常场景可能以 `error` 提前结束
 - `/chat/stream` 是 `POST` SSE，不适合直接用原生 `EventSource`
 - 当前后端未提供会话上下文，前端若要做多轮对话，需要自行保留历史问题和历史回答
+- `/draft` 当前为单次生成接口，不保留草稿历史，也不提供草稿保存能力
 
 ## Real Test Cases
 
