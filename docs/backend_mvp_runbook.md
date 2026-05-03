@@ -92,3 +92,5 @@ Expected success:
 Draft smoke-test note:
 - if `/draft` returns a non-empty `missing_fields` array, treat that as a valid business response rather than a server error
 - if `/draft` returns an empty `draft_text` with missing fields, confirm the request facts cover all required template placeholders
+- if `/chat` or a fully-populated `/draft` returns HTTP `502` with `{"detail":"上游模型调用失败"}`, check the configured upstream model account status, quota, and provider console restrictions first
+- if `/chat/stream` encounters the same upstream problem after the SSE connection is established, expect `event: error` with `{"message":"上游模型调用失败"}` rather than an HTTP `502` body

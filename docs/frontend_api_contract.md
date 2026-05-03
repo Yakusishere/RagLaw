@@ -532,6 +532,25 @@ async function streamChat(query: string, onEvent: (event: string, data: any) => 
 - 可提供“重试”按钮
 - 不要假设返回体结构稳定
 
+### `502 Bad Gateway`
+
+触发场景：
+- `/chat` 或 `/draft` 调用上游模型失败
+- 例如模型额度耗尽、上游服务拒绝请求、兼容层调用失败
+
+当前返回体：
+
+```json
+{
+  "detail": "上游模型调用失败"
+}
+```
+
+前端建议：
+- 将其视为“外部能力暂不可用”，而不是用户输入错误
+- 可以提示用户稍后重试，或切换到仅检索/仅补全字段模式
+- `/chat/stream` 遇到同类问题时，通常不会返回 HTTP `502`，而是通过 SSE `error` 事件返回相同语义的错误消息
+
 ## Integration Notes
 
 - `/retrieve` 和 `/chat` 都依赖当前已 promote 的法规数据和向量数据

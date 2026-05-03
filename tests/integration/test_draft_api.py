@@ -3,6 +3,7 @@ from fastapi.testclient import TestClient
 from app.dependencies import get_draft_service
 from app.main import create_app
 from app.schemas.draft import DraftResponse
+from app.services.exceptions import UpstreamModelError
 
 
 class FakeDraftServiceWithMissingFields:
@@ -27,6 +28,11 @@ class FakeDraftServiceWithRenderedText:
             cited_laws=["《中华人民共和国消费者权益保护法》第二十四条"],
             next_steps=["核对后提交。"],
         )
+
+
+class FakeFailingDraftService:
+    def generate(self, request):
+        raise UpstreamModelError()
 
 
 def test_post_draft_returns_missing_fields_when_facts_incomplete():
@@ -85,3 +91,20 @@ def test_post_draft_response_shape_is_stable():
         "template_name",
         "template_type",
     ]
+
+
+def test_post_draft_returns_502_when_upstream_model_call_fails():
+    app = create_app()
+    app.dependency_overrides[get_draft_service] = lambda: FakeFailingDraftService()
+    client = TestClient(app)
+
+    response = client.post(
+        "/draft",
+        json={
+            "template_type": "complaint_letter",
+            "facts": {"consumer_name": "张三"},
+        },
+    )
+
+    assert response.status_code == 502
+    assert response.json() == {"detail": "上游模型调用失败"}

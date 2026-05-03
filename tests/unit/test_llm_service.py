@@ -270,4 +270,4 @@ def test_stream_answer_yields_error_when_upstream_stream_fails():
     events = list(service.stream_answer(build_retrieval_response()))
 
     assert [event.event for event in events] == ["meta", "error"]
-    assert "boom" in events[1].data["message"]
+    assert events[1].data["message"] == "上游模型调用失败"

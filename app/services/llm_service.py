@@ -5,6 +5,7 @@ from openai import OpenAI
 
 from app.schemas.chat import ChatAnswer, ChatResponse, ChatStreamEvent
 from app.schemas.retrieval import RetrievalResponse
+from app.services.exceptions import UpstreamModelError
 
 PROMPT_PATH = Path(__file__).resolve().parents[1] / "prompts" / "qa_system.txt"
 DRAFT_PROMPT_PATH = Path(__file__).resolve().parents[1] / "prompts" / "drafting_system.txt"
@@ -104,7 +105,7 @@ class LLMService:
                 ],
             )
         except Exception as exc:
-            raise RuntimeError("上游模型调用失败") from exc
+            raise UpstreamModelError() from exc
         answer = build_supported_answer_parts(
             retrieval_response,
             summary=response.output_text,
@@ -145,7 +146,7 @@ class LLMService:
                     if event.type == "response.output_text.delta" and event.delta:
                         yield ChatStreamEvent(event="delta", data={"text": event.delta})
         except Exception as exc:
-            yield ChatStreamEvent(event="error", data={"message": str(exc) or "上游模型调用失败"})
+            yield ChatStreamEvent(event="error", data={"message": str(UpstreamModelError())})
             return
 
         yield ChatStreamEvent(
@@ -171,5 +172,5 @@ class LLMService:
                 ],
             )
         except Exception as exc:
-            raise RuntimeError("上游模型调用失败") from exc
+            raise UpstreamModelError() from exc
         return response.output_text.strip()
