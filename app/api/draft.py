@@ -68,5 +68,6 @@ def get_draft_template(
     try:
         template = template_service.get_template(template_type)
     except KeyError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        detail = exc.args[0] if exc.args else "unknown template"
+        raise HTTPException(status_code=404, detail=detail) from exc
     return build_template_metadata_response(template)

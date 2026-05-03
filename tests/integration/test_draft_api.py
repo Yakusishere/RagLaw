@@ -221,4 +221,11 @@ def test_get_draft_template_by_type_returns_404_for_unknown_template():
     response = client.get("/draft/templates/not_exists")
 
     assert response.status_code == 404
-    assert response.json() == {"detail": "'unknown template_type: not_exists'"}
+    assert response.json() == {"detail": "unknown template_type: not_exists"}
+
+
+def test_get_template_service_returns_shared_instance():
+    first = get_template_service()
+    second = get_template_service()
+
+    assert first is second

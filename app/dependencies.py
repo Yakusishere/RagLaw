@@ -13,6 +13,9 @@ from app.services.retrieval_service import RetrievalService
 from app.services.template_service import FileTemplateService
 
 
+_template_service = FileTemplateService()
+
+
 def get_app_settings() -> Settings:
     return get_settings()
 
@@ -56,7 +59,7 @@ def get_chat_service(
 
 
 def get_template_service() -> FileTemplateService:
-    return FileTemplateService()
+    return _template_service
 
 
 def get_draft_service(
