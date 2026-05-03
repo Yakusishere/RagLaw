@@ -1,8 +1,8 @@
 from fastapi.testclient import TestClient
 
-from app.dependencies import get_draft_service
+from app.dependencies import get_draft_service, get_template_service
 from app.main import create_app
-from app.schemas.draft import DraftResponse
+from app.schemas.draft import DraftResponse, DraftTemplate
 from app.services.exceptions import UpstreamModelError
 
 
@@ -33,6 +33,57 @@ class FakeDraftServiceWithRenderedText:
 class FakeFailingDraftService:
     def generate(self, request):
         raise UpstreamModelError()
+
+
+class FakeTemplateService:
+    def __init__(self) -> None:
+        self._templates = {
+            "complaint_letter": DraftTemplate.model_validate(
+                {
+                    "template_id": "tpl-complaint",
+                    "template_name": "投诉信（商品质量纠纷）",
+                    "doc_type": "complaint",
+                    "template_type": "complaint_letter",
+                    "scene": "商品质量纠纷",
+                    "status": "active",
+                    "required_fields": [
+                        {"name": "consumer_name", "label": "投诉人姓名", "type": "string"}
+                    ],
+                    "optional_fields": [
+                        {"name": "consumer_id_no", "label": "投诉人证件号", "type": "string"}
+                    ],
+                    "derived_placeholders": [],
+                    "suggested_citations": [],
+                    "template_text": "正文",
+                }
+            ),
+            "demand_letter": DraftTemplate.model_validate(
+                {
+                    "template_id": "tpl-demand",
+                    "template_name": "催告函（退款退货）",
+                    "doc_type": "letter",
+                    "template_type": "demand_letter",
+                    "scene": "退款退货",
+                    "status": "active",
+                    "required_fields": [
+                        {"name": "sender_name", "label": "发函人姓名", "type": "string"}
+                    ],
+                    "optional_fields": [],
+                    "derived_placeholders": [],
+                    "suggested_citations": [],
+                    "template_text": "正文",
+                }
+            ),
+        }
+
+    def list_templates(self):
+        return [self._templates["complaint_letter"], self._templates["demand_letter"]]
+
+    def get_template(self, template_type: str):
+        try:
+            return self._templates[template_type]
+        except KeyError as exc:
+            raise KeyError(f"unknown template_type: {template_type}") from exc
 
 
 def test_post_draft_returns_missing_fields_when_facts_incomplete():
@@ -108,3 +159,66 @@ def test_post_draft_returns_502_when_upstream_model_call_fails():
 
     assert response.status_code == 502
     assert response.json() == {"detail": "上游模型调用失败"}
+
+
+def test_get_draft_templates_returns_template_list():
+    app = create_app()
+    app.dependency_overrides[get_template_service] = lambda: FakeTemplateService()
+    client = TestClient(app)
+
+    response = client.get("/draft/templates")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "templates": [
+            {
+                "template_type": "complaint_letter",
+                "template_name": "投诉信（商品质量纠纷）",
+                "required_fields": [
+                    {"name": "consumer_name", "label": "投诉人姓名", "type": "string"}
+                ],
+                "optional_fields": [
+                    {"name": "consumer_id_no", "label": "投诉人证件号", "type": "string"}
+                ],
+            },
+            {
+                "template_type": "demand_letter",
+                "template_name": "催告函（退款退货）",
+                "required_fields": [
+                    {"name": "sender_name", "label": "发函人姓名", "type": "string"}
+                ],
+                "optional_fields": [],
+            },
+        ]
+    }
+
+
+def test_get_draft_template_by_type_returns_single_template():
+    app = create_app()
+    app.dependency_overrides[get_template_service] = lambda: FakeTemplateService()
+    client = TestClient(app)
+
+    response = client.get("/draft/templates/complaint_letter")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "template_type": "complaint_letter",
+        "template_name": "投诉信（商品质量纠纷）",
+        "required_fields": [
+            {"name": "consumer_name", "label": "投诉人姓名", "type": "string"}
+        ],
+        "optional_fields": [
+            {"name": "consumer_id_no", "label": "投诉人证件号", "type": "string"}
+        ],
+    }
+
+
+def test_get_draft_template_by_type_returns_404_for_unknown_template():
+    app = create_app()
+    app.dependency_overrides[get_template_service] = lambda: FakeTemplateService()
+    client = TestClient(app)
+
+    response = client.get("/draft/templates/not_exists")
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "'unknown template_type: not_exists'"}

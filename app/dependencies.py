@@ -55,12 +55,13 @@ def get_chat_service(
     )
 
 
+def get_template_service() -> FileTemplateService:
+    return FileTemplateService()
+
+
 def get_draft_service(
-    settings: Settings = Depends(get_app_settings),
-    conn: Connection = Depends(get_db_connection),
+    template_service: FileTemplateService = Depends(get_template_service),
+    retrieval_service: RetrievalService = Depends(get_retrieval_service),
+    llm_service: LLMService = Depends(get_chat_service),
 ) -> DraftService:
-    return DraftService(
-        FileTemplateService(),
-        get_retrieval_service(settings=settings, conn=conn),
-        get_chat_service(settings=settings),
-    )
+    return DraftService(template_service, retrieval_service, llm_service)
