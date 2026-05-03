@@ -13,8 +13,12 @@ class FakeDraftServiceWithMissingFields:
             template_name="投诉信（商品质量纠纷）",
             draft_text="",
             missing_fields=["merchant_name"],
+            missing_materials=["订单页面", "支付记录"],
             cited_laws=[],
-            next_steps=["补全必填字段后重新生成文书草稿。"],
+            next_steps=[
+                "请先补全必填字段后再重新生成或核对文书。",
+                "优先补齐以下材料：订单页面、支付记录。",
+            ],
         )
 
 
@@ -24,9 +28,10 @@ class FakeDraftServiceWithRenderedText:
             template_type=request.template_type,
             template_name="投诉信（商品质量纠纷）",
             draft_text="投诉信正文",
+            missing_materials=[],
             missing_fields=[],
             cited_laws=["《中华人民共和国消费者权益保护法》第二十四条"],
-            next_steps=["核对后提交。"],
+            next_steps=["先向商家或平台提交投诉信并保留提交记录。"],
         )
 
 
@@ -101,6 +106,7 @@ def test_post_draft_returns_missing_fields_when_facts_incomplete():
 
     assert response.status_code == 200
     assert response.json()["missing_fields"] == ["merchant_name"]
+    assert response.json()["missing_materials"] == ["订单页面", "支付记录"]
 
 
 def test_post_draft_returns_rendered_text_when_complete():
@@ -118,6 +124,7 @@ def test_post_draft_returns_rendered_text_when_complete():
 
     assert response.status_code == 200
     assert response.json()["draft_text"] == "投诉信正文"
+    assert response.json()["missing_materials"] == []
 
 
 def test_post_draft_response_shape_is_stable():
@@ -138,6 +145,7 @@ def test_post_draft_response_shape_is_stable():
         "cited_laws",
         "draft_text",
         "missing_fields",
+        "missing_materials",
         "next_steps",
         "template_name",
         "template_type",

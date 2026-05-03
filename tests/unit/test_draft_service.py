@@ -182,8 +182,17 @@ def test_draft_service_returns_missing_fields_without_calling_llm():
 
     assert response.template_name == "投诉信（商品质量纠纷）"
     assert response.missing_fields == ["merchant_name"]
+    assert response.missing_materials == [
+        "订单页面",
+        "支付记录",
+        "聊天记录",
+        "商品问题照片或视频",
+        "发票或收据",
+        "平台售后或投诉记录",
+    ]
     assert response.draft_text == ""
     assert response.cited_laws == []
+    assert response.next_steps[0] == "请先补全必填字段后再重新生成或核对文书。"
     assert retrieval_service.calls == []
     assert llm_service.calls == []
 
@@ -201,9 +210,22 @@ def test_draft_service_renders_when_required_fields_are_complete():
     )
 
     assert response.missing_fields == []
+    assert response.missing_materials == [
+        "订单页面",
+        "支付记录",
+        "聊天记录",
+        "商品问题照片或视频",
+        "发票或收据",
+        "平台售后或投诉记录",
+    ]
     assert response.draft_text == "投诉人：张三\n商家：某商家"
     assert response.cited_laws == ["《中华人民共和国消费者权益保护法》第二十四条"]
-    assert response.next_steps == ["核对文书内容并补齐证据附件后再正式提交。"]
+    assert response.next_steps == [
+        "优先补齐以下材料：订单页面、支付记录、聊天记录、商品问题照片或视频、发票或收据、平台售后或投诉记录。",
+        "核对投诉对象、事实经过、具体诉求和处理期限是否准确。",
+        "先向商家或平台提交投诉信并保留提交记录。",
+        "如仍未解决，可转入 12315 投诉或行政调解，并关注 7 个工作日处理告知与 60 日调解期限。",
+    ]
     assert retrieval_service.calls == [("投诉信（商品质量纠纷） 张三 某商家", None)]
     assert llm_service.calls
 

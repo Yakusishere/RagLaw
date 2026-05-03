@@ -22,6 +22,7 @@ class DraftResponse(BaseModel):
     template_name: str
     draft_text: str
     missing_fields: list[str]
+    missing_materials: list[str]
     cited_laws: list[str]
     next_steps: list[str]
 

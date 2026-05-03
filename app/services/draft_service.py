@@ -7,6 +7,7 @@ from app.schemas.draft import (
     DraftTemplateDerivedPlaceholder,
     DraftTemplateField,
 )
+from app.services.draft_guidance import build_draft_guidance
 
 PLACEHOLDER_PATTERN = re.compile(r"{{\s*([a-zA-Z0-9_]+)\s*}}")
 
@@ -96,6 +97,11 @@ class DraftService:
     def generate(self, request: DraftRequest) -> DraftResponse:
         template = self._template_service.get_template(request.template_type)
         missing_fields = build_missing_fields(template.required_fields, request.facts)
+        guidance = build_draft_guidance(
+            template_type=request.template_type,
+            facts=request.facts,
+            missing_fields=missing_fields,
+        )
 
         if missing_fields:
             return DraftResponse(
@@ -103,8 +109,9 @@ class DraftService:
                 template_name=template.template_name,
                 draft_text="",
                 missing_fields=missing_fields,
+                missing_materials=guidance.missing_materials,
                 cited_laws=[],
-                next_steps=["补全必填字段后重新生成文书草稿。"],
+                next_steps=guidance.next_steps,
             )
 
         retrieval_response = self._retrieval_service.retrieve(
@@ -122,8 +129,9 @@ class DraftService:
             template_name=template.template_name,
             draft_text=draft_text,
             missing_fields=[],
+            missing_materials=guidance.missing_materials,
             cited_laws=[
                 item.citation.citation_label for item in retrieval_response.results[:5]
             ],
-            next_steps=["核对文书内容并补齐证据附件后再正式提交。"],
+            next_steps=guidance.next_steps,
         )
