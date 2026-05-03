@@ -97,3 +97,47 @@ def test_template_service_rejects_malformed_payload(tmp_path):
         assert "template_name" in str(exc)
     else:
         raise AssertionError("expected ValidationError")
+
+
+def test_template_service_lists_templates_in_stable_template_type_order(tmp_path):
+    _write_template_file(
+        tmp_path,
+        "template_z.json",
+        _template_payload("lawsuit_draft"),
+    )
+    _write_template_file(
+        tmp_path,
+        "template_a.json",
+        _template_payload("complaint_letter"),
+    )
+
+    service = FileTemplateService(template_dir=tmp_path)
+
+    templates = service.list_templates()
+
+    assert [template.template_type for template in templates] == [
+        "complaint_letter",
+        "lawsuit_draft",
+    ]
+
+
+def test_template_service_list_templates_returns_same_typed_template_objects(tmp_path):
+    _write_template_file(
+        tmp_path,
+        "template_complaint.json",
+        _template_payload("complaint_letter"),
+    )
+    _write_template_file(
+        tmp_path,
+        "template_demand.json",
+        _template_payload("demand_letter"),
+    )
+    service = FileTemplateService(template_dir=tmp_path)
+
+    listed_templates = service.list_templates()
+
+    assert all(template.__class__.__name__ == "DraftTemplate" for template in listed_templates)
+    assert listed_templates == [
+        service.get_template("complaint_letter"),
+        service.get_template("demand_letter"),
+    ]

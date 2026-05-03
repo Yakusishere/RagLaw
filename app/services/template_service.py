@@ -18,6 +18,9 @@ class FileTemplateService:
         except KeyError as exc:
             raise KeyError(f"unknown template_type: {template_type}") from exc
 
+    def list_templates(self) -> list[DraftTemplate]:
+        return [self._templates[template_type] for template_type in sorted(self._templates)]
+
     def _load_templates(self) -> dict[DraftTemplateType, DraftTemplate]:
         templates: dict[DraftTemplateType, DraftTemplate] = {}
         for template_path in self._template_dir.glob("template_*.json"):
