@@ -67,6 +67,38 @@ type ChatStreamDoneEvent = {
 type ChatStreamErrorEvent = {
   message: string
 }
+
+type DraftRequest = {
+  template_type: "complaint_letter" | "demand_letter" | "lawsuit_draft"
+  facts: Record<string, string>
+}
+
+type DraftResponse = {
+  template_type: "complaint_letter" | "demand_letter" | "lawsuit_draft"
+  template_name: string
+  draft_text: string
+  missing_fields: string[]
+  missing_materials: string[]
+  cited_laws: string[]
+  next_steps: string[]
+}
+
+type DraftTemplateField = {
+  name: string
+  label: string
+  type: "string" | "text" | "integer"
+}
+
+type DraftTemplateMetadataResponse = {
+  template_type: "complaint_letter" | "demand_letter" | "lawsuit_draft"
+  template_name: string
+  required_fields: DraftTemplateField[]
+  optional_fields: DraftTemplateField[]
+}
+
+type DraftTemplateListResponse = {
+  templates: DraftTemplateMetadataResponse[]
+}
 ```
 
 ## Endpoints
@@ -424,6 +456,205 @@ async function streamChat(query: string, onEvent: (event: string, data: any) => 
 }
 ```
 
+### `POST /draft`
+
+用途：
+- 基于 Phase 2 文书模板、结构化事实和检索依据生成文书草稿
+- 适合“投诉信/律师函/起诉状草稿生成页”
+
+请求体：
+
+```json
+{
+  "template_type": "complaint_letter",
+  "facts": {
+    "consumer_name": "张三",
+    "merchant_name": "某商家",
+    "product_name": "蓝牙耳机"
+  }
+}
+```
+
+字段说明：
+- `template_type: "complaint_letter" | "demand_letter" | "lawsuit_draft"`
+  - 文书模板类型
+  - 当前只接受后端已内置的固定枚举值
+- `facts: Record<string, string>`
+  - 文书生成所需的结构化字段
+  - key 必须与前端当前模板表单字段名保持一致
+
+成功响应：
+
+```json
+{
+  "template_type": "complaint_letter",
+  "template_name": "投诉信（商品质量纠纷）",
+  "draft_text": "投诉信正文",
+  "missing_fields": [],
+  "missing_materials": [
+    "订单页面",
+    "支付记录"
+  ],
+  "cited_laws": [
+    "《中华人民共和国消费者权益保护法》第二十四条"
+  ],
+  "next_steps": [
+    "优先补齐以下材料：订单页面、支付记录。",
+    "核对投诉对象、事实经过、具体诉求和处理期限是否准确。",
+    "先向商家或平台提交投诉信并保留提交记录。"
+  ]
+}
+```
+
+响应字段说明：
+- `template_type: string`
+  - 与请求中的模板类型一致
+- `template_name: string`
+  - 当前模板的人类可读名称
+- `draft_text: string`
+  - 生成出的文书正文
+  - 当必填字段未补全时，返回空字符串 `""`
+- `missing_fields: string[]`
+  - 缺失的必填字段名列表
+  - 前端应优先基于这个数组回填表单校验提示
+- `missing_materials: string[]`
+  - 后端基于模板类型和已填写事实保守判断出的“建议优先补齐材料”
+  - 始终返回数组；无缺失时返回 `[]`
+  - 这是材料提示，不等同于法律上已最终认定“绝对缺失”
+- `cited_laws: string[]`
+  - 本次草稿生成使用到的法条标签列表
+- `next_steps: string[]`
+  - 后端给出的后续处理建议
+  - 当前会根据 `template_type` 以及是否存在 `missing_fields` / `missing_materials` 变化
+
+前端展示建议：
+- 若 `missing_fields.length > 0`：
+  - 不展示“最终文书完成”态
+  - 优先高亮对应表单项，并展示 `next_steps`
+- 若 `missing_materials.length > 0`：
+  - 在草稿区或证据区额外提示用户继续补充材料
+  - 不要把它当成字段校验错误；它和 `missing_fields` 的语义不同
+- 若 `missing_fields.length === 0`：
+  - 展示 `draft_text`
+  - 同时展示 `cited_laws` 作为依据标签
+- 前端可通过 `GET /draft/templates` 或 `GET /draft/templates/{template_type}` 获取模板字段定义，再据此驱动表单渲染
+
+### `GET /draft/templates`
+
+用途：
+- 获取当前可用文书模板的元数据列表
+- 适合前端初始化模板选择器、动态表单配置或模板预览页
+
+成功响应：
+
+```json
+{
+  "templates": [
+    {
+      "template_type": "complaint_letter",
+      "template_name": "投诉信（商品质量纠纷）",
+      "required_fields": [
+        {
+          "name": "consumer_name",
+          "label": "投诉人姓名",
+          "type": "string"
+        }
+      ],
+      "optional_fields": [
+        {
+          "name": "consumer_id_no",
+          "label": "投诉人证件号",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "template_type": "demand_letter",
+      "template_name": "催告函（退款退货）",
+      "required_fields": [
+        {
+          "name": "sender_name",
+          "label": "发函人姓名",
+          "type": "string"
+        }
+      ],
+      "optional_fields": []
+    }
+  ]
+}
+```
+
+响应字段说明：
+- `templates: DraftTemplateMetadataResponse[]`
+  - 当前所有可用模板的最小元数据列表
+- `template_type: string`
+  - 模板类型标识
+  - 前端可直接将其作为模板选择值，并回传给 `POST /draft`
+- `template_name: string`
+  - 模板展示名称
+- `required_fields: DraftTemplateField[]`
+  - 必填字段定义
+- `optional_fields: DraftTemplateField[]`
+  - 可选字段定义
+
+前端展示建议：
+- 模板卡片或下拉项至少展示 `template_name`
+- 选择模板后，用 `required_fields` 和 `optional_fields` 渲染表单
+- `required_fields` 建议优先展示，并在提交前做前端必填校验
+
+### `GET /draft/templates/{template_type}`
+
+用途：
+- 获取单个文书模板的元数据
+- 适合前端按模板类型懒加载表单定义
+
+路径参数：
+- `template_type: "complaint_letter" | "demand_letter" | "lawsuit_draft"`
+  - 模板类型标识
+
+成功响应：
+
+```json
+{
+  "template_type": "complaint_letter",
+  "template_name": "投诉信（商品质量纠纷）",
+  "required_fields": [
+    {
+      "name": "consumer_name",
+      "label": "投诉人姓名",
+      "type": "string"
+    }
+  ],
+  "optional_fields": [
+    {
+      "name": "consumer_id_no",
+      "label": "投诉人证件号",
+      "type": "string"
+    }
+  ]
+}
+```
+
+响应字段说明：
+- 返回体结构与 `DraftTemplateMetadataResponse` 一致
+- 仅包含前端表单渲染所需的最小字段集，不包含正文模板或内部推导配置
+
+前端展示建议：
+- 适合在进入某个模板详情页或填写页时单独请求
+- 如果前端已调用 `GET /draft/templates` 并缓存结果，可不重复请求该接口
+
+错误响应：
+
+```json
+{
+  "detail": "unknown template_type: not_exists"
+}
+```
+
+前端错误处理建议：
+- 当成模板类型失效或前端缓存过期处理
+- 可回退到重新请求 `GET /draft/templates` 并让用户重新选择模板
+
 ## Error Handling
 
 ### `422 Unprocessable Entity`
@@ -449,6 +680,25 @@ async function streamChat(query: string, onEvent: (event: string, data: any) => 
 - 可提供“重试”按钮
 - 不要假设返回体结构稳定
 
+### `502 Bad Gateway`
+
+触发场景：
+- `/chat` 或 `/draft` 调用上游模型失败
+- 例如模型额度耗尽、上游服务拒绝请求、兼容层调用失败
+
+当前返回体：
+
+```json
+{
+  "detail": "上游模型调用失败"
+}
+```
+
+前端建议：
+- 将其视为“外部能力暂不可用”，而不是用户输入错误
+- 可以提示用户稍后重试，或切换到仅检索/仅补全字段模式
+- `/chat/stream` 遇到同类问题时，通常不会返回 HTTP `502`，而是通过 SSE `error` 事件返回相同语义的错误消息
+
 ## Integration Notes
 
 - `/retrieve` 和 `/chat` 都依赖当前已 promote 的法规数据和向量数据
@@ -456,6 +706,7 @@ async function streamChat(query: string, onEvent: (event: string, data: any) => 
 - `/chat/stream` 事件顺序应按 `meta -> delta* -> citations -> done` 处理；异常场景可能以 `error` 提前结束
 - `/chat/stream` 是 `POST` SSE，不适合直接用原生 `EventSource`
 - 当前后端未提供会话上下文，前端若要做多轮对话，需要自行保留历史问题和历史回答
+- `/draft` 当前为单次生成接口，不保留草稿历史，也不提供草稿保存能力
 
 ## Real Test Cases
 

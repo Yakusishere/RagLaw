@@ -6,6 +6,7 @@ from app.dependencies import get_chat_service, get_retrieval_service
 from app.main import create_app
 from app.schemas.chat import ChatAnswer, ChatResponse, ChatStreamEvent
 from app.schemas.retrieval import CitationPayload, RetrievalResponse, RetrievalResultItem
+from app.services.exceptions import UpstreamModelError
 
 
 class FakeRetrievalService:
@@ -67,6 +68,15 @@ class FakeChatService:
         yield ChatStreamEvent(event="done", data={"ok": True})
 
 
+class FakeFailingChatService:
+    def answer(self, retrieval_response: RetrievalResponse) -> ChatResponse:
+        raise UpstreamModelError()
+
+    def stream_answer(self, retrieval_response: RetrievalResponse):
+        yield ChatStreamEvent(event="meta", data={"query": retrieval_response.query})
+        yield ChatStreamEvent(event="error", data={"message": "上游模型调用失败"})
+
+
 class FakeFailingRetrievalService:
     def retrieve(self, query: str, top_k: int | None = None) -> RetrievalResponse:
         raise RuntimeError("retrieval failed")
@@ -101,6 +111,18 @@ def test_chat_returns_grounded_shape():
     assert payload["answer"]["summary"]
     assert payload["citations"][0]["citation_label"] == "《中华人民共和国消费者权益保护法》第二十四条"
     assert payload["retrieval"]["result_count"] == 1
+
+
+def test_chat_returns_502_when_upstream_model_call_fails():
+    app = create_app()
+    app.dependency_overrides[get_retrieval_service] = lambda: FakeRetrievalService()
+    app.dependency_overrides[get_chat_service] = lambda: FakeFailingChatService()
+
+    client = TestClient(app)
+    response = client.post("/chat", json={"query": "商家拒绝退款怎么办"})
+
+    assert response.status_code == 502
+    assert response.json() == {"detail": "上游模型调用失败"}
 
 
 def test_chat_stream_returns_sse_frames():

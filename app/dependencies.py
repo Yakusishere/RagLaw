@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+from functools import lru_cache
 
 from fastapi import Depends
 from openai import OpenAI
@@ -7,8 +8,10 @@ from psycopg import Connection
 from app.config import Settings, get_settings
 from app.db.connection import get_connection
 from app.db.repositories.retrieval_repository import RetrievalRepository
+from app.services.draft_service import DraftService
 from app.services.llm_service import LLMService
 from app.services.retrieval_service import RetrievalService
+from app.services.template_service import FileTemplateService
 
 
 def get_app_settings() -> Settings:
@@ -51,3 +54,16 @@ def get_chat_service(
         settings.openai_chat_model,
         settings.openai_base_url,
     )
+
+
+@lru_cache
+def get_template_service() -> FileTemplateService:
+    return FileTemplateService()
+
+
+def get_draft_service(
+    template_service: FileTemplateService = Depends(get_template_service),
+    retrieval_service: RetrievalService = Depends(get_retrieval_service),
+    llm_service: LLMService = Depends(get_chat_service),
+) -> DraftService:
+    return DraftService(template_service, retrieval_service, llm_service)

@@ -1,0 +1,60 @@
+{
+  "template_id": "lawsuit_draft_ecommerce_dispute_v1",
+  "template_name": "民事起诉状（网络购物纠纷）",
+  "doc_type": "template",
+  "template_type": "lawsuit_draft",
+  "scene": "ecommerce_lawsuit",
+  "status": "draft_ready",
+  "required_fields": [
+    { "name": "court_name", "label": "受理法院", "type": "string" },
+    { "name": "plaintiff_name", "label": "原告姓名", "type": "string" },
+    { "name": "plaintiff_gender", "label": "原告性别", "type": "string" },
+    { "name": "plaintiff_birth_date", "label": "原告出生日期", "type": "string" },
+    { "name": "plaintiff_ethnicity", "label": "原告民族", "type": "string" },
+    { "name": "plaintiff_address", "label": "原告住址", "type": "string" },
+    { "name": "plaintiff_contact", "label": "原告联系方式", "type": "string" },
+    { "name": "defendant_name", "label": "被告名称", "type": "string" },
+    { "name": "defendant_type", "label": "被告类型", "type": "string" },
+    { "name": "defendant_address", "label": "被告地址", "type": "string" },
+    { "name": "cause_of_action", "label": "案由", "type": "string" },
+    { "name": "claims", "label": "诉讼请求", "type": "text" },
+    { "name": "facts_and_reasons", "label": "事实与理由", "type": "text" },
+    { "name": "evidence_list", "label": "证据清单", "type": "text" },
+    { "name": "filing_date", "label": "起诉日期", "type": "string" }
+  ],
+  "optional_fields": [
+    { "name": "plaintiff_work_info", "label": "原告职业或工作单位", "type": "string" },
+    { "name": "plaintiff_id_no", "label": "原告证件号", "type": "string" },
+    { "name": "legal_representative_block", "label": "法定代理人段", "type": "text" },
+    { "name": "litigation_agent_block", "label": "委托诉讼代理人段", "type": "text" },
+    { "name": "co_defendant_block", "label": "共同被告段", "type": "text" },
+    { "name": "jurisdiction_reason", "label": "管辖依据说明", "type": "text" },
+    { "name": "platform_liability_block", "label": "平台责任说明", "type": "text" },
+    { "name": "loss_amount_block", "label": "损失金额说明", "type": "text" },
+    { "name": "attachments_count", "label": "副本份数", "type": "integer" }
+  ],
+  "derived_placeholders": [
+    {
+      "name": "jurisdiction_reason_block",
+      "from": ["jurisdiction_reason"],
+      "rule": "有值时渲染为“管辖依据：...”，无值时置空"
+    },
+    {
+      "name": "attachments_count_or_default",
+      "from": ["attachments_count"],
+      "rule": "有值时使用该数字；缺失时默认渲染为“按被告人数提交”"
+    }
+  ],
+  "suggested_citations": [
+    "《中华人民共和国民事诉讼法》第二十四条",
+    "《中华人民共和国民事诉讼法》第二十九条",
+    "《中华人民共和国民事诉讼法》第三十五条",
+    "《中华人民共和国民事诉讼法》第三十六条",
+    "《中华人民共和国民事诉讼法》第一百二十二条",
+    "《中华人民共和国民事诉讼法》第一百二十四条",
+    "《中华人民共和国消费者权益保护法》第二十四条",
+    "《中华人民共和国消费者权益保护法》第四十四条",
+    "《中华人民共和国电子商务法》第三十八条"
+  ],
+  "template_text": "民事起诉状\n\n原告：{{plaintiff_name}}，{{plaintiff_gender}}，{{plaintiff_birth_date}} 生，{{plaintiff_ethnicity}}，{{plaintiff_work_info}}，住 {{plaintiff_address}}，联系方式：{{plaintiff_contact}}。\n{{legal_representative_block}}\n{{litigation_agent_block}}\n\n被告：{{defendant_name}}（{{defendant_type}}），住/住所地：{{defendant_address}}。\n{{co_defendant_block}}\n\n诉讼请求：\n{{claims}}\n\n事实与理由：\n{{facts_and_reasons}}\n\n{{jurisdiction_reason_block}}\n{{platform_liability_block}}\n\n证据和证据来源，证人姓名和住所：\n{{evidence_list}}\n\n此致\n{{court_name}}\n\n附：\n1. 本起诉状副本 {{attachments_count_or_default}} 份；\n2. 身份材料、证据材料及其他起诉材料若干。\n\n起诉人：{{plaintiff_name}}\n{{filing_date}}"
+}

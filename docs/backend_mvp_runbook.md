@@ -19,6 +19,8 @@ uvicorn app.main:app --reload
 - promoted real embeddings exist in `rag.chunk_embeddings`
 - `OPENAI_EMBEDDING_MODEL` matches the promoted embedding model name
 - if `OPENAI_BASE_URL` points to a non-OpenAI provider, that provider must also support the configured embedding model
+- Phase 2 draft template files exist under `docs/phase2_materials`
+- at least one `template_*.json` file is present and matches the current `DraftTemplate` schema
 
 ## Real embedding cutover
 
@@ -61,12 +63,16 @@ curl.exe -X POST http://127.0.0.1:8000/retrieve `
 curl.exe -X POST http://127.0.0.1:8000/chat `
   -H "Content-Type: application/json" `
   --data '{"query":"网购商品质量有问题，商家不同意退货怎么办？"}'
+curl.exe -X POST http://127.0.0.1:8000/draft `
+  -H "Content-Type: application/json" `
+  --data '{"template_type":"complaint_letter","facts":{"consumer_name":"张三","merchant_name":"某商家","product_name":"蓝牙耳机"}}'
 ```
 
 Expected success:
 - `/health` returns a JSON body containing `"status":"ok"`
 - `/retrieve` returns JSON with a non-empty `results` array when promoted data is present
 - `/chat` returns JSON containing `answer.summary`, `citations`, and `retrieval.result_count`
+- `/draft` returns JSON containing `template_name`, `draft_text`, `missing_fields`, `cited_laws`, and `next_steps`
 
 SSE smoke test:
 
@@ -82,3 +88,9 @@ Expected success:
 - then includes one or more `event: delta`
 - and ends with `event: citations` plus `event: done`
 - if a runtime failure happens after streaming starts, expect `event: error` on the SSE channel rather than an HTTP `500` body
+
+Draft smoke-test note:
+- if `/draft` returns a non-empty `missing_fields` array, treat that as a valid business response rather than a server error
+- if `/draft` returns an empty `draft_text` with missing fields, confirm the request facts cover all required template placeholders
+- if `/chat` or a fully-populated `/draft` returns HTTP `502` with `{"detail":"上游模型调用失败"}`, check the configured upstream model account status, quota, and provider console restrictions first
+- if `/chat/stream` encounters the same upstream problem after the SSE connection is established, expect `event: error` with `{"message":"上游模型调用失败"}` rather than an HTTP `502` body

@@ -5,8 +5,10 @@ from openai import OpenAI
 
 from app.schemas.chat import ChatAnswer, ChatResponse, ChatStreamEvent
 from app.schemas.retrieval import RetrievalResponse
+from app.services.exceptions import UpstreamModelError
 
 PROMPT_PATH = Path(__file__).resolve().parents[1] / "prompts" / "qa_system.txt"
+DRAFT_PROMPT_PATH = Path(__file__).resolve().parents[1] / "prompts" / "drafting_system.txt"
 
 
 def build_grounded_prompt(retrieval_response: RetrievalResponse) -> str:
@@ -15,6 +17,23 @@ def build_grounded_prompt(retrieval_response: RetrievalResponse) -> str:
         context_blocks.append(f"[{item.citation.citation_label}]\n{item.chunk_text}")
     joined_context = "\n\n".join(context_blocks) if context_blocks else "无可用检索依据。"
     return f"用户问题：{retrieval_response.query}\n\n检索依据：\n{joined_context}"
+
+
+def build_drafting_prompt(
+    template_text: str,
+    facts: dict[str, str],
+    retrieval_response: RetrievalResponse,
+) -> str:
+    facts_block = "\n".join(f"- {key}: {value}" for key, value in facts.items())
+    context_blocks = []
+    for item in retrieval_response.results:
+        context_blocks.append(f"[{item.citation.citation_label}]\n{item.chunk_text}")
+    joined_context = "\n\n".join(context_blocks) if context_blocks else "无可用检索依据。"
+    return (
+        f"模板正文：\n{template_text}\n\n"
+        f"结构化事实：\n{facts_block}\n\n"
+        f"检索依据：\n{joined_context}"
+    )
 
 
 def build_insufficient_basis_answer() -> ChatAnswer:
@@ -65,6 +84,7 @@ class LLMService:
         self._client = client or OpenAI(api_key=api_key, base_url=base_url)
         self._model_name = model_name
         self._system_prompt = PROMPT_PATH.read_text(encoding="utf-8")
+        self._drafting_system_prompt = DRAFT_PROMPT_PATH.read_text(encoding="utf-8")
 
     def answer(self, retrieval_response: RetrievalResponse) -> ChatResponse:
         if not retrieval_response.results:
@@ -85,7 +105,7 @@ class LLMService:
                 ],
             )
         except Exception as exc:
-            raise RuntimeError("上游模型调用失败") from exc
+            raise UpstreamModelError() from exc
         answer = build_supported_answer_parts(
             retrieval_response,
             summary=response.output_text,
@@ -126,7 +146,7 @@ class LLMService:
                     if event.type == "response.output_text.delta" and event.delta:
                         yield ChatStreamEvent(event="delta", data={"text": event.delta})
         except Exception as exc:
-            yield ChatStreamEvent(event="error", data={"message": str(exc) or "上游模型调用失败"})
+            yield ChatStreamEvent(event="error", data={"message": str(UpstreamModelError())})
             return
 
         yield ChatStreamEvent(
@@ -134,3 +154,23 @@ class LLMService:
             data=build_stream_citations_payload(retrieval_response, answer),
         )
         yield ChatStreamEvent(event="done", data={"ok": True})
+
+    def draft_document(
+        self,
+        *,
+        template_text: str,
+        facts: dict[str, str],
+        retrieval_response: RetrievalResponse,
+    ) -> str:
+        prompt = build_drafting_prompt(template_text, facts, retrieval_response)
+        try:
+            response = self._client.responses.create(
+                model=self._model_name,
+                input=[
+                    {"role": "system", "content": self._drafting_system_prompt},
+                    {"role": "user", "content": prompt},
+                ],
+            )
+        except Exception as exc:
+            raise UpstreamModelError() from exc
+        return response.output_text.strip()
