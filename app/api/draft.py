@@ -9,7 +9,7 @@ from app.schemas.draft import (
     DraftTemplateListResponse,
     DraftTemplateMetadataResponse,
 )
-from app.services.exceptions import UpstreamModelError
+from app.services.exceptions import UpstreamDependencyError
 
 router = APIRouter()
 
@@ -44,7 +44,7 @@ def draft(
 ) -> DraftResponse:
     try:
         return draft_service.generate(payload)
-    except UpstreamModelError as exc:
+    except UpstreamDependencyError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 

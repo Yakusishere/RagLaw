@@ -1,6 +1,9 @@
 import importlib
 import sys
 
+from app.dependencies import OpenAIEmbeddingClient
+from app.services.exceptions import UpstreamDependencyError
+
 
 def test_dependencies_module_import_does_not_eagerly_construct_template_service(monkeypatch):
     module_name = "app.dependencies"
@@ -40,3 +43,25 @@ def test_dependencies_module_import_does_not_eagerly_construct_template_service(
             del sys.modules[module_name]
         if original_module is not None:
             sys.modules[module_name] = original_module
+
+
+def test_embedding_client_normalizes_upstream_failure():
+    class ExplodingEmbeddings:
+        def create(self, **kwargs):
+            raise ValueError("boom")
+
+    class FakeClient:
+        embeddings = ExplodingEmbeddings()
+
+    client = OpenAIEmbeddingClient(
+        api_key="test-key",
+        model_name="test-embedding",
+        client=FakeClient(),
+    )
+
+    try:
+        client.embed_query("商家拒绝退款怎么办")
+        raise AssertionError("expected UpstreamDependencyError")
+    except UpstreamDependencyError as exc:
+        assert str(exc) == "上游依赖调用失败"
+        assert isinstance(exc.__cause__, ValueError)

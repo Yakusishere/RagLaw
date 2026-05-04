@@ -185,7 +185,7 @@ def test_draft_document_normalizes_upstream_create_failure():
         )
         assert False, "expected draft_document() to raise RuntimeError"
     except RuntimeError as exc:
-        assert str(exc) == "上游模型调用失败"
+        assert str(exc) == "上游依赖调用失败"
         assert isinstance(exc.__cause__, ValueError)
         assert str(exc.__cause__) == "boom"
 
@@ -217,7 +217,7 @@ def test_answer_normalizes_upstream_create_failure():
         service.answer(build_retrieval_response())
         assert False, "expected answer() to raise RuntimeError"
     except RuntimeError as exc:
-        assert str(exc) == "上游模型调用失败"
+        assert str(exc) == "上游依赖调用失败"
         assert isinstance(exc.__cause__, ValueError)
         assert str(exc.__cause__) == "boom"
 
@@ -270,4 +270,4 @@ def test_stream_answer_yields_error_when_upstream_stream_fails():
     events = list(service.stream_answer(build_retrieval_response()))
 
     assert [event.event for event in events] == ["meta", "error"]
-    assert events[1].data["message"] == "上游模型调用失败"
+    assert events[1].data["message"] == "上游依赖调用失败"

@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 from app.dependencies import get_draft_service, get_template_service
 from app.main import create_app
 from app.schemas.draft import DraftResponse, DraftTemplate
-from app.services.exceptions import UpstreamModelError
+from app.services.exceptions import UpstreamDependencyError
 
 
 class FakeDraftServiceWithMissingFields:
@@ -37,7 +37,7 @@ class FakeDraftServiceWithRenderedText:
 
 class FakeFailingDraftService:
     def generate(self, request):
-        raise UpstreamModelError()
+        raise UpstreamDependencyError()
 
 
 class FakeTemplateService:
@@ -166,7 +166,7 @@ def test_post_draft_returns_502_when_upstream_model_call_fails():
     )
 
     assert response.status_code == 502
-    assert response.json() == {"detail": "上游模型调用失败"}
+    assert response.json() == {"detail": "上游依赖调用失败"}
 
 
 def test_get_draft_templates_returns_template_list():
