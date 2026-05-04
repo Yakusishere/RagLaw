@@ -8,6 +8,7 @@ from psycopg import Connection
 from app.config import Settings, get_settings
 from app.db.connection import get_connection
 from app.db.repositories.retrieval_repository import RetrievalRepository
+from app.services.exceptions import UpstreamDependencyError
 from app.services.draft_service import DraftService
 from app.services.llm_service import LLMService
 from app.services.retrieval_service import RetrievalService
@@ -24,12 +25,21 @@ def get_db_connection() -> Iterator[Connection]:
 
 
 class OpenAIEmbeddingClient:
-    def __init__(self, api_key: str, model_name: str, base_url: str | None = None):
-        self._client = OpenAI(api_key=api_key, base_url=base_url)
+    def __init__(
+        self,
+        api_key: str,
+        model_name: str,
+        base_url: str | None = None,
+        client: OpenAI | None = None,
+    ):
+        self._client = client or OpenAI(api_key=api_key, base_url=base_url)
         self._model_name = model_name
 
     def embed_query(self, query: str) -> list[float]:
-        response = self._client.embeddings.create(model=self._model_name, input=query)
+        try:
+            response = self._client.embeddings.create(model=self._model_name, input=query)
+        except Exception as exc:
+            raise UpstreamDependencyError() from exc
         return response.data[0].embedding
 
 
