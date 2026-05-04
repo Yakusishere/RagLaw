@@ -6,7 +6,7 @@ from app.dependencies import get_chat_service, get_retrieval_service
 from app.main import create_app
 from app.schemas.chat import ChatAnswer, ChatResponse, ChatStreamEvent
 from app.schemas.retrieval import CitationPayload, RetrievalResponse, RetrievalResultItem
-from app.services.exceptions import UpstreamModelError
+from app.services.exceptions import UpstreamDependencyError
 
 
 class FakeRetrievalService:
@@ -70,7 +70,7 @@ class FakeChatService:
 
 class FakeFailingChatService:
     def answer(self, retrieval_response: RetrievalResponse) -> ChatResponse:
-        raise UpstreamModelError()
+        raise UpstreamDependencyError()
 
     def stream_answer(self, retrieval_response: RetrievalResponse):
         yield ChatStreamEvent(event="meta", data={"query": retrieval_response.query})
@@ -79,7 +79,7 @@ class FakeFailingChatService:
 
 class FakeFailingRetrievalService:
     def retrieve(self, query: str, top_k: int | None = None) -> RetrievalResponse:
-        raise RuntimeError("retrieval failed")
+        raise UpstreamDependencyError()
 
 
 def collect_stream_frames(client: TestClient, query: str) -> tuple[object, list[str]]:
@@ -122,7 +122,19 @@ def test_chat_returns_502_when_upstream_model_call_fails():
     response = client.post("/chat", json={"query": "商家拒绝退款怎么办"})
 
     assert response.status_code == 502
-    assert response.json() == {"detail": "上游模型调用失败"}
+    assert response.json() == {"detail": "上游依赖调用失败"}
+
+
+def test_chat_returns_502_when_retrieval_upstream_call_fails():
+    app = create_app()
+    app.dependency_overrides[get_retrieval_service] = lambda: FakeFailingRetrievalService()
+    app.dependency_overrides[get_chat_service] = lambda: FakeChatService()
+
+    client = TestClient(app)
+    response = client.post("/chat", json={"query": "商家拒绝退款怎么办"})
+
+    assert response.status_code == 502
+    assert response.json() == {"detail": "上游依赖调用失败"}
 
 
 def test_chat_stream_returns_sse_frames():
@@ -155,4 +167,4 @@ def test_chat_stream_emits_error_event_when_stream_setup_fails():
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/event-stream")
     assert [parse_frame(frame)[0] for frame in frames] == ["error"]
-    assert parse_frame(frames[0])[1]["message"] == "retrieval failed"
+    assert parse_frame(frames[0])[1]["message"] == "上游依赖调用失败"

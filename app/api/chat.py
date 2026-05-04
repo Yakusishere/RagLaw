@@ -7,7 +7,7 @@ from fastapi.responses import StreamingResponse
 
 from app.dependencies import get_chat_service, get_retrieval_service
 from app.schemas.chat import ChatRequest, ChatResponse, ChatStreamEvent
-from app.services.exceptions import UpstreamModelError
+from app.services.exceptions import UpstreamDependencyError
 from app.services.llm_service import LLMService
 from app.services.retrieval_service import RetrievalService
 
@@ -36,7 +36,7 @@ def stream_chat_events(
         retrieval_response = retrieval_service.retrieve(payload.query)
         for event in chat_service.stream_answer(retrieval_response):
             yield encode_sse_event(event)
-    except UpstreamModelError as exc:
+    except UpstreamDependencyError as exc:
         yield encode_error_sse_event(str(exc))
     except Exception as exc:
         message = str(exc) or "stream failed"
@@ -49,10 +49,10 @@ def chat(
     retrieval_service: RetrievalService = Depends(get_retrieval_service),
     chat_service: LLMService = Depends(get_chat_service),
 ) -> ChatResponse:
-    retrieval_response = retrieval_service.retrieve(payload.query)
     try:
+        retrieval_response = retrieval_service.retrieve(payload.query)
         return chat_service.answer(retrieval_response)
-    except UpstreamModelError as exc:
+    except UpstreamDependencyError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
